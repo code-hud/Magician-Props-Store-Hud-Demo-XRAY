@@ -306,8 +306,10 @@ body {
 
 .product-footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #eee;
@@ -322,6 +324,13 @@ body {
 .product-stock {
   font-size: 0.85rem;
   color: #666;
+}
+
+.product-popularity {
+  font-size: 0.8rem;
+  color: #e67e22;
+  font-weight: 500;
+  width: 100%;
 }
 
 .product-actions {

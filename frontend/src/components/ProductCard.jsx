@@ -38,6 +38,9 @@ export default function ProductCard({ product }) {
           <span className="product-stock">
             {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
           </span>
+          {product.timesOrdered > 0 && (
+            <span className="product-popularity">{product.timesOrdered} ordered recently</span>
+          )}
         </div>
 
         <div className="product-actions">

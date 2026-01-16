@@ -43,7 +43,9 @@ export const StoreProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await api.getProducts(search, category);
-      setProducts(response.data);
+      // Sort by popularity (timesOrdered) descending
+      const sortedProducts = [...response.data].sort((a, b) => (b.timesOrdered || 0) - (a.timesOrdered || 0));
+      setProducts(sortedProducts);
       setCurrentPage(1);
       setError(null);
     } catch (err) {
