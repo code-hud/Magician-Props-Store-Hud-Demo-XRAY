@@ -17,13 +17,16 @@ cd magician-props-store-hud-demo
 
 2. Start the application with Hud monitoring:
 ```bash
-HUD_API_KEY=your_hud_api_key docker-compose up --build
+HUD_API_KEY=your_hud_api_key REACT_APP_API_URL=http://localhost:3001 docker-compose up --build
 ```
 
 Or create a `.env` file in the project root:
 ```
 HUD_API_KEY=your_hud_api_key
+REACT_APP_API_URL=http://localhost:3001
 ```
+
+**Note:** Set `REACT_APP_API_URL` to the public URL of your backend API. Use `http://localhost:3001` for local development or your server's public IP/domain when deploying remotely.
 
 Then run:
 ```bash
