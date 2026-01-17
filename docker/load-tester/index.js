@@ -57,6 +57,19 @@ async function getCart() {
   }
 }
 
+async function getCartSuggestions() {
+  try {
+    const response = await fetch(`${BASE_URL}/cart/suggestions?sessionId=${sessionId}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const suggestions = await response.json();
+    console.log(`[${new Date().toISOString()}] ✓ Got ${suggestions.length} product suggestions`);
+    return suggestions;
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] ✗ Error fetching suggestions:`, error.message);
+    return [];
+  }
+}
+
 async function checkout(cartItems) {
   try {
     const totalAmount = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0) || undefined;
@@ -146,8 +159,10 @@ async function runCycle() {
     }
   }
 
-  // Get cart and attempt checkout
+  // Get cart and suggestions (simulating cart page view)
   const cart = await getCart();
+  await getCartSuggestions();
+
   console.log(`[${new Date().toISOString()}] Attempting checkout with ${cart.length} items...`);
   await checkout(cart);
 
