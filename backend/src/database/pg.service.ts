@@ -4,10 +4,10 @@ import { AWSXRay } from '../xray';
 
 @Injectable({ scope: Scope.REQUEST })
 export class PgService {
-  private client: Client;
+  private client: Client | null = null;
   private connected = false;
 
-  private async ensureConnected() {
+  private async ensureConnected(): Promise<Client> {
     if (!this.connected) {
       this.client = new Client({
         host: process.env.DB_HOST || 'postgres',
@@ -20,16 +20,16 @@ export class PgService {
       await this.client.connect();
       this.connected = true;
     }
+    return this.client!;
   }
 
   async query(text: string, params?: any[]): Promise<QueryResult> {
-    await this.ensureConnected();
-
+    const client = await this.ensureConnected();
     const segment = AWSXRay.getSegment();
 
     // If no active segment, just run the query without tracing
     if (!segment) {
-      return this.client.query(text, params);
+      return client.query(text, params);
     }
 
     // Create a subsegment for this database query
@@ -38,7 +38,7 @@ export class PgService {
     subsegment.addMetadata('sql', { query: this.sanitizeQuery(text) });
 
     try {
-      const result = await this.client.query(text, params);
+      const result = await client.query(text, params);
       subsegment.addMetadata('sql', { rowCount: result.rowCount });
       return result;
     } catch (error) {
@@ -54,9 +54,10 @@ export class PgService {
   }
 
   async disconnect() {
-    if (this.connected) {
+    if (this.connected && this.client) {
       await this.client.end();
       this.connected = false;
+      this.client = null;
     }
   }
 }
