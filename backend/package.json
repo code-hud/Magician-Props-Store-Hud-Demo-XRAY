@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.978.0",
+    "aws-xray-sdk": "^3.10.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",

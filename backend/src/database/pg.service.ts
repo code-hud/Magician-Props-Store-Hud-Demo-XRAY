@@ -1,5 +1,6 @@
 import { Injectable, Scope } from '@nestjs/common';
 import { Client, QueryResult } from 'pg';
+import { AWSXRay } from '../xray';
 
 @Injectable({ scope: Scope.REQUEST })
 export class PgService {
@@ -23,7 +24,33 @@ export class PgService {
 
   async query(text: string, params?: any[]): Promise<QueryResult> {
     await this.ensureConnected();
-    return this.client.query(text, params);
+
+    const segment = AWSXRay.getSegment();
+
+    // If no active segment, just run the query without tracing
+    if (!segment) {
+      return this.client.query(text, params);
+    }
+
+    // Create a subsegment for this database query
+    const subsegment = segment.addNewSubsegment('postgres');
+    subsegment.addAnnotation('database', process.env.DB_NAME || 'magician_props_store');
+    subsegment.addMetadata('sql', { query: this.sanitizeQuery(text) });
+
+    try {
+      const result = await this.client.query(text, params);
+      subsegment.addMetadata('sql', { rowCount: result.rowCount });
+      return result;
+    } catch (error) {
+      subsegment.addError(error as Error);
+      throw error;
+    } finally {
+      subsegment.close();
+    }
+  }
+
+  private sanitizeQuery(query: string): string {
+    return query.replace(/\s+/g, ' ').trim().substring(0, 500);
   }
 
   async disconnect() {

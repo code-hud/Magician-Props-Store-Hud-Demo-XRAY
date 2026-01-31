@@ -32,6 +32,17 @@ services:
       timeout: 5s
       retries: 5
 
+  xray-daemon:
+    image: amazon/aws-xray-daemon:3.x
+    container_name: xray-daemon
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    ports:
+      - "2000:2000/udp"
+    command: --local-mode
+
   backend:
     build:
       context: ./backend
@@ -43,6 +54,8 @@ services:
       PORT: 3001
       CHECKOUT_SERVICE_URL: http://checkout:3002
       HUD_API_KEY: ${HUD_API_KEY}
+      XRAY_DAEMON_ADDRESS: xray-daemon:2000
+      AWS_XRAY_DAEMON_ADDRESS: xray-daemon:2000
     ports:
       - "3001:3001"
     depends_on:
@@ -50,6 +63,8 @@ services:
         condition: service_healthy
       checkout:
         condition: service_healthy
+      xray-daemon:
+        condition: service_started
     volumes:
       - ./backend/src:/app/src
     command: npm run start:dev

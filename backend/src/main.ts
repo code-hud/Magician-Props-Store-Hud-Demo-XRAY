@@ -1,9 +1,18 @@
+// X-Ray must be imported first to capture all HTTP clients
+import { AWSXRay } from './xray';
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { LoggerService } from './logger/logger.service';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  // Create Express app with X-Ray middleware
+  const expressApp = express();
+  expressApp.use(AWSXRay.express.openSegment('magician-props-api'));
+
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
     bufferLogs: true,
   });
 
@@ -15,6 +24,9 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
+
+  // Close segment must be registered after all routes
+  app.use(AWSXRay.express.closeSegment());
 
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0', () => {

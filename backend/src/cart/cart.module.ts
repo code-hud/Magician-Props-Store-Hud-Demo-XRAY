@@ -3,12 +3,12 @@ import { CartController } from './cart.controller';
 import { CartService } from './cart.service';
 import { CartRepository } from './repositories/cart.repository';
 import { ProductsModule } from '../products/products.module';
-import { PgService } from '../database/pg.service';
+import { DatabaseModule } from '../database/database.module';
 
 @Module({
-  imports: [ProductsModule],
+  imports: [ProductsModule, DatabaseModule],
   controllers: [CartController],
-  providers: [CartRepository, CartService, PgService],
+  providers: [CartRepository, CartService],
   exports: [CartService, CartRepository],
 })
 export class CartModule {}
