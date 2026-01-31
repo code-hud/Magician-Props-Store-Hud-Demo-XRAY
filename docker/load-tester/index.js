@@ -136,13 +136,25 @@ async function runCycle() {
   const numProductsToAdd = randomInt(0, 10);
   console.log(`[${new Date().toISOString()}] Will add ${numProductsToAdd} products to cart`);
 
-  // Add random products
   const addedProductIds = [];
-  for (let i = 0; i < numProductsToAdd; i++) {
+  if (Math.random() < 0.6 && numProductsToAdd > 0) {
+    const playingCards = products.find(p => p.id === 1);
+    if (playingCards) {
+      const quantity = randomInt(1, 3);
+      await addToCart(playingCards.id, quantity);
+      addedProductIds.push(playingCards.id);
+    }
+  }
+
+  // Add remaining random products
+  const remainingToAdd = numProductsToAdd - addedProductIds.length;
+  for (let i = 0; i < remainingToAdd; i++) {
     const product = products[randomInt(0, products.length - 1)];
-    const quantity = randomInt(1, 5);
-    await addToCart(product.id, quantity);
-    addedProductIds.push(product.id);
+    if (!addedProductIds.includes(product.id)) {
+      const quantity = randomInt(1, 5);
+      await addToCart(product.id, quantity);
+      addedProductIds.push(product.id);
+    }
   }
 
   // Every once in a while, try to add the same product again

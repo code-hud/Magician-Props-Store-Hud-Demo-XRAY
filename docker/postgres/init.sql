@@ -2353,3 +2353,48 @@ INSERT INTO products (name, description, price, category, stock) VALUES
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_cart_items_session ON cart_items(session_id);
 CREATE INDEX idx_orders_session ON orders(session_id);
+
+-- Seed historical order data
+DO $$
+DECLARE
+  order_id_counter INT := 100;
+  product_a INT;
+  product_b INT;
+  i INT;
+  j INT;
+BEGIN
+  FOR i IN 1..200000 LOOP
+    INSERT INTO orders (id, session_id, customer_name, customer_email, customer_phone, total_amount, status, created_at)
+    VALUES (
+      order_id_counter,
+      'seed-session-' || i,
+      'Test Customer ' || i,
+      'customer' || i || '@example.com',
+      '555-000' || LPAD(i::TEXT, 4, '0'),
+      RANDOM() * 200 + 10,  -- $10-$210
+      'completed',
+      NOW() - (RANDOM() * INTERVAL '30 days')  -- Last 30 days
+    );
+
+    IF RANDOM() < 0.7 THEN
+      INSERT INTO order_items (order_id, product_id, quantity, price, created_at)
+      VALUES (order_id_counter, 1, 1, 9.99, NOW() - (RANDOM() * INTERVAL '30 days'));
+
+      FOR j IN 1..(1 + FLOOR(RANDOM() * 4)::INT) LOOP
+        product_b := 2 + FLOOR(RANDOM() * 999)::INT;
+        INSERT INTO order_items (order_id, product_id, quantity, price, created_at)
+        VALUES (order_id_counter, product_b, 1, RANDOM() * 50 + 10, NOW() - (RANDOM() * INTERVAL '30 days'));
+      END LOOP;
+    ELSE
+      FOR j IN 1..(1 + FLOOR(RANDOM() * 3)::INT) LOOP
+        product_b := 2 + FLOOR(RANDOM() * 999)::INT;
+        INSERT INTO order_items (order_id, product_id, quantity, price, created_at)
+        VALUES (order_id_counter, product_b, 1, RANDOM() * 50 + 10, NOW() - (RANDOM() * INTERVAL '30 days'));
+      END LOOP;
+    END IF;
+
+    order_id_counter := order_id_counter + 1;
+  END LOOP;
+
+  RAISE NOTICE 'Generated % historical orders', 200000;
+END $$;

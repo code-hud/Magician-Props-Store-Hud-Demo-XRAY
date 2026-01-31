@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CartItem } from './entities/cart-item.entity';
-import { CartRepository } from './repositories/cart.repository';
+import { CartRepository, CartItem } from './repositories/cart.repository';
 import {
   ProductsService,
   ProductWithPopularity,
@@ -50,32 +49,31 @@ export class CartService {
     );
   }
 
-  async getSuggestions(sessionId: string): Promise<ProductWithPopularity[]> {
-    const cartItems = await this.cartRepository.findBySessionId(sessionId);
-    if (cartItems.length === 0) return [];
-
+  private getPrimaryCategory(cartItems: CartItem[]): string | null {
     const categoryCounts: Record<string, number> = {};
     cartItems.forEach((item) => {
       const cat = item.product?.category;
       if (cat) categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     });
 
-    const primaryCategory = Object.entries(categoryCounts).sort(
+    return Object.entries(categoryCounts).sort(
       (a, b) => b[1] - a[1],
-    )[0]?.[0];
+    )[0]?.[0] || null;
+  }
 
+  async getSuggestions(sessionId: string): Promise<ProductWithPopularity[]> {
+    const cartItems = await this.cartRepository.findBySessionId(sessionId);
+    if (cartItems.length === 0) return [];
+
+    const primaryCategory = this.getPrimaryCategory(cartItems);
     if (!primaryCategory) return [];
 
     const products = await this.productsService.findAll('', primaryCategory);
-
     const cartProductIds = new Set(cartItems.map((i) => i.product_id));
     const availableProducts = products.filter((p) => !cartProductIds.has(p.id));
 
-    // Sort by popularity (most ordered first) and pick top 3
-    const suggestions = availableProducts
-      .sort((a, b) => b.timesOrdered - a.timesOrdered)
-      .slice(0, 3);
-
-    return suggestions;
+    // Randomly shuffle and pick 3
+    const shuffled = availableProducts.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
   }
 }

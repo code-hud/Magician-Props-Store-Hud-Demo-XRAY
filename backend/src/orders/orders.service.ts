@@ -1,7 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
-import { Order } from './entities/order.entity';
-import { OrderRepository } from './repositories/order.repository';
+import { OrderRepository, Order } from './repositories/order.repository';
 import { CartRepository } from '../cart/repositories/cart.repository';
 
 @Injectable()

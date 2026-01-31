@@ -1,62 +1,79 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Product } from '../entities/product.entity';
+import { PgService } from '../../database/pg.service';
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  image_url: string | null;
+  category: string;
+  stock: number;
+  created_at: Date;
+  updated_at: Date;
+}
 
 @Injectable()
 export class ProductRepository {
-  constructor(
-    @InjectRepository(Product)
-    private readonly repository: Repository<Product>,
-  ) {}
+  constructor(private readonly pgService: PgService) {}
 
   async findAll(): Promise<Product[]> {
-    const products = await this.repository.find({
-      order: { created_at: 'DESC' },
-    });
-    console.log(`[ProductRepository] Retrieved ${products.length} products`);
-    return products;
+    const result = await this.pgService.query(
+      'SELECT * FROM products ORDER BY created_at DESC'
+    );
+    console.log(`[ProductRepository] Retrieved ${result.rows.length} products`);
+    return result.rows;
   }
 
   async findById(id: number): Promise<Product | null> {
-    const product = await this.repository.findOne({
-      where: { id },
-    });
+    const result = await this.pgService.query(
+      'SELECT * FROM products WHERE id = $1',
+      [id]
+    );
+    const product = result.rows[0] || null;
     console.log(`[ProductRepository] ${product ? 'Found' : 'Did not find'} product with id ${id}`);
     return product;
   }
 
   async findByIds(ids: number[]): Promise<Product[]> {
-    const products = await this.repository.findByIds(ids);
-    console.log(`[ProductRepository] Retrieved ${products.length} of ${ids.length} products`);
-    return products;
+    const result = await this.pgService.query(
+      'SELECT * FROM products WHERE id = ANY($1::int[])',
+      [ids]
+    );
+    console.log(`[ProductRepository] Retrieved ${result.rows.length} of ${ids.length} products`);
+    return result.rows;
   }
 
   async searchWithFilters(search?: string, category?: string): Promise<Product[]> {
-    const query = this.repository.createQueryBuilder('product');
+    let query = 'SELECT * FROM products WHERE 1=1';
+    const params: any[] = [];
+    let paramIndex = 1;
 
     if (search) {
-      query.where('product.name ILIKE :search', { search: `%${search}%` })
-        .orWhere('product.description ILIKE :search', { search: `%${search}%` });
+      params.push(`%${search}%`);
+      query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      paramIndex++;
     }
 
     if (category) {
-      query.andWhere('product.category = :category', { category });
+      params.push(category);
+      query += ` AND category = $${paramIndex}`;
+      paramIndex++;
     }
 
-    const products = await query.orderBy('product.created_at', 'DESC').getMany();
-    console.log(`[ProductRepository] Search returned ${products.length} products (search: "${search}", category: "${category}")`);
-    return products;
+    query += ' ORDER BY created_at DESC';
+
+    const result = await this.pgService.query(query, params);
+    console.log(`[ProductRepository] Search returned ${result.rows.length} products (search: "${search}", category: "${category}")`);
+    return result.rows;
   }
 
   async getCategories(): Promise<string[]> {
-    const categories = await this.repository
-      .createQueryBuilder('product')
-      .select('DISTINCT product.category', 'category')
-      .where('product.category IS NOT NULL')
-      .getRawMany();
-    const result = categories.map(c => c.category).filter(Boolean);
-    console.log(`[ProductRepository] Retrieved ${result.length} distinct categories`);
-    return result;
+    const result = await this.pgService.query(
+      'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category'
+    );
+    const categories = result.rows.map(row => row.category).filter(Boolean);
+    console.log(`[ProductRepository] Retrieved ${categories.length} distinct categories`);
+    return categories;
   }
 }
