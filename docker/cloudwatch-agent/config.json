@@ -1,0 +1,16 @@
+{
+  "agent": {
+    "region": "eu-west-1",
+    "debug": false
+  },
+  "traces": {
+    "traces_collected": {
+      "xray": {
+        "bind_address": "0.0.0.0:2000",
+        "tcp_proxy": {
+          "bind_address": "0.0.0.0:2000"
+        }
+      }
+    }
+  }
+}

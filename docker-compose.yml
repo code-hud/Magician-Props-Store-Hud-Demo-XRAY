@@ -18,21 +18,20 @@ services:
       timeout: 5s
       retries: 5
 
-  xray-daemon:
-    image: amazon/aws-xray-daemon:3.x
-    container_name: xray-daemon
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
+  cloudwatch-agent:
+    image: amazon/cloudwatch-agent:latest
+    container_name: cloudwatch-agent
+    volumes:
+      - ./docker/cloudwatch-agent/config.json:/etc/cwagentconfig/config.json
     ports:
       - "2000:2000/udp"
-    command: --local-mode
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
     container_name: magician-props-api
     environment:
       NODE_ENV: development
@@ -40,18 +39,24 @@ services:
       PORT: 3001
       CHECKOUT_SERVICE_URL: https://red-art-630d.omer-b78.workers.dev
       HUD_API_KEY: ${HUD_API_KEY}
-      XRAY_DAEMON_ADDRESS: xray-daemon:2000
-      AWS_XRAY_DAEMON_ADDRESS: xray-daemon:2000
+      XRAY_DAEMON_ADDRESS: cloudwatch-agent:2000
+      AWS_XRAY_DAEMON_ADDRESS: cloudwatch-agent:2000
     ports:
       - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
-      xray-daemon:
+      cloudwatch-agent:
         condition: service_started
     volumes:
       - ./backend/src:/app/src
     command: npm run start:dev
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/magician-props/backend
+        awslogs-region: eu-west-1
+        awslogs-create-group: "true"
 
   frontend:
     build:

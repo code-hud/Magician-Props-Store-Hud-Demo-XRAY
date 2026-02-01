@@ -120,7 +120,8 @@ async function runCycle() {
   // Fetch products
   const products = await getProducts();
   if (products.length === 0) {
-    console.warn(`[${new Date().toISOString()}] No products available, skipping cycle`);
+    console.warn(`[${new Date().toISOString()}] No products available, waiting 10s before retry`);
+    await sleep(10000);
     return;
   }
 

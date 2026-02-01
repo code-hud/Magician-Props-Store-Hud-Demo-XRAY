@@ -1,9 +1,10 @@
 FROM node:18-alpine
 
-WORKDIR /app
-
 ARG REACT_APP_API_URL
+RUN if [ -z "$REACT_APP_API_URL" ]; then echo "ERROR: REACT_APP_API_URL build arg is required" && exit 1; fi
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
+WORKDIR /app
 
 COPY package*.json ./
 

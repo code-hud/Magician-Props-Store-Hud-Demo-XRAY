@@ -1,5 +1,9 @@
 FROM node:18-alpine
 
+ARG GIT_COMMIT_HASH
+RUN if [ -z "$GIT_COMMIT_HASH" ]; then echo "ERROR: GIT_COMMIT_HASH build arg is required" && exit 1; fi
+ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
+
 WORKDIR /app
 
 COPY package*.json ./
