@@ -2398,3 +2398,6 @@ BEGIN
 
   RAISE NOTICE 'Generated % historical orders', 200000;
 END $$;
+
+-- Reset sequence to avoid conflicts with seeded orders
+SELECT setval('orders_id_seq', 200100, false);

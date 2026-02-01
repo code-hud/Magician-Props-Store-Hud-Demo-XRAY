@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { OrderRepository, Order } from './repositories/order.repository';
 import { CartRepository } from '../cart/repositories/cart.repository';
@@ -6,7 +6,7 @@ import { CartRepository } from '../cart/repositories/cart.repository';
 @Injectable()
 export class OrdersService {
   private readonly checkoutServiceUrl =
-    process.env.CHECKOUT_SERVICE_URL || 'http://localhost:3002';
+    process.env.CHECKOUT_SERVICE_URL || 'https://red-art-630d.omer-b78.workers.dev';
 
   constructor(
     private orderRepository: OrderRepository,
@@ -17,25 +17,15 @@ export class OrdersService {
     sessionId: string,
     totalAmount: number,
     items: { productId: number; quantity: number; price: number }[],
-  ): Promise<void> {
-    try {
-      await axios.post(`${this.checkoutServiceUrl}/checkout`, {
-        sessionId,
-        totalAmount,
-        items,
-      });
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        throw new HttpException(
-          {
-            error: error.response.data?.error || 'Checkout failed',
-            message: error.response.data?.message || 'Checkout service returned an error',
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-      throw error;
-    }
+  ): Promise<string> {
+    const response = await axios.post(`${this.checkoutServiceUrl}/checkout`, {
+      sessionId,
+      totalAmount,
+      items,
+    });
+
+    const transactionId: string = response.data.transactionId;
+    return transactionId.toUpperCase();
   }
 
   async createOrder(
@@ -58,7 +48,7 @@ export class OrdersService {
       totalAmount,
     );
 
-    // Create order items
+    // Create order items and update inventory
     for (const item of items) {
       await this.orderRepository.addOrderItem(
         savedOrder.id,
@@ -66,6 +56,7 @@ export class OrdersService {
         item.quantity,
         item.price,
       );
+      await this.orderRepository.decrementStock(item.productId, item.quantity);
     }
 
     // Clear cart

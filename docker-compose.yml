@@ -11,23 +11,9 @@ services:
     volumes:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - postgres_data:/var/lib/postgresql/data
+    command: postgres -c max_connections=500
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  checkout:
-    build:
-      context: ./docker/checkout
-      dockerfile: Dockerfile
-    container_name: magician-props-checkout
-    environment:
-      PORT: 3002
-    ports:
-      - "3002:3002"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,7 +38,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/magician_props_store
       PORT: 3001
-      CHECKOUT_SERVICE_URL: http://checkout:3002
+      CHECKOUT_SERVICE_URL: https://red-art-630d.omer-b78.workers.dev
       HUD_API_KEY: ${HUD_API_KEY}
       XRAY_DAEMON_ADDRESS: xray-daemon:2000
       AWS_XRAY_DAEMON_ADDRESS: xray-daemon:2000
@@ -60,8 +46,6 @@ services:
       - "3001:3001"
     depends_on:
       postgres:
-        condition: service_healthy
-      checkout:
         condition: service_healthy
       xray-daemon:
         condition: service_started

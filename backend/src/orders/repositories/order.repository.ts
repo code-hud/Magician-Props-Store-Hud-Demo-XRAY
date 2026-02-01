@@ -114,6 +114,14 @@ export class OrderRepository {
     return order;
   }
 
+  async decrementStock(productId: number, quantity: number): Promise<void> {
+    await this.pgService.query(
+      'UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2',
+      [quantity, productId]
+    );
+    console.log(`[OrderRepository] Decremented stock for product ${productId} by ${quantity}`);
+  }
+
   async findBySessionId(sessionId: string): Promise<Order[]> {
     const ordersResult = await this.pgService.query(
       'SELECT * FROM orders WHERE session_id = $1 ORDER BY created_at DESC',
