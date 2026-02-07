@@ -4,6 +4,7 @@ import { AWSXRay } from './xray';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { LoggerService } from './logger/logger.service';
+import { CacheService } from './cache/cache.service';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 
@@ -18,6 +19,10 @@ async function bootstrap() {
 
   const logger = app.get(LoggerService);
   app.useLogger(logger);
+
+  // Resolve CacheService and explicitly initialize (onModuleInit doesn't work with request-scoped deps)
+  const cacheService = await app.resolve(CacheService);
+  cacheService.initializeCache().catch((err) => logger.error('Cache init failed', err, 'Bootstrap'));
 
   app.enableCors({
     origin: '*',

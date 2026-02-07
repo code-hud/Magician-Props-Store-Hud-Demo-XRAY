@@ -5,6 +5,7 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { LoggerModule } from './logger/logger.module';
 import { DatabaseModule } from './database/database.module';
+import { CacheModule } from './cache/cache.module';
 import { PgCleanupInterceptor } from './database/pg.interceptor';
 
 @Module({
@@ -12,6 +13,7 @@ import { PgCleanupInterceptor } from './database/pg.interceptor';
     LoggerModule,
     DatabaseModule,
     ProductsModule,
+    CacheModule,
     CartModule,
     OrdersModule,
   ],
