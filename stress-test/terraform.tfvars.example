@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in values
+
+aws_region = "us-east-2"
+
+# Required: Your Hud API key
+hud_api_key = "your-hud-api-key"
+
+# Backend sizing (adjust for your load)
+backend_cpu    = 512   # 256, 512, 1024, 2048, 4096
+backend_memory = 1024  # Must be compatible with CPU
+
+# K6 stress test configuration
+k6_duration = "5m"  # Test duration
+k6_vus      = 50    # Max concurrent virtual users

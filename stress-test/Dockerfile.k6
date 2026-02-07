@@ -1,0 +1,5 @@
+FROM grafana/k6:latest
+
+COPY k6-dual-script.js /scripts/script.js
+
+ENTRYPOINT ["k6", "run", "/scripts/script.js"]
