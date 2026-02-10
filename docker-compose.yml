@@ -30,17 +30,26 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
     container_name: magician-props-api
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/magician_props_store
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: magician_props_store
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      # Application
       PORT: 3001
+      SERVICE_NAME: magician-props-api-py
+      LOG_LEVEL: info
+      # External services
       CHECKOUT_SERVICE_URL: https://red-art-630d.omer-b78.workers.dev
-      HUD_API_KEY: ${HUD_API_KEY}
+      # AWS X-Ray
       XRAY_DAEMON_ADDRESS: cloudwatch-agent:2000
       AWS_XRAY_DAEMON_ADDRESS: cloudwatch-agent:2000
+      # Hud SDK
+      HUD_API_KEY: ${HUD_API_KEY}
+      GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
     ports:
       - "3001:3001"
     depends_on:
@@ -49,14 +58,15 @@ services:
       cloudwatch-agent:
         condition: service_started
     volumes:
-      - ./backend/src:/app/src
-    command: npm run start:dev
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: /ec2/magician-props/backend
-        awslogs-region: eu-west-1
-        awslogs-create-group: "true"
+      - ./backend/app:/app/app
+      - ./backend/start.sh:/app/start.sh
+    command: bash start.sh
+    # logging:
+    #   driver: awslogs
+    #   options:
+    #     awslogs-group: /ec2/magician-props/backend
+    #     awslogs-region: eu-west-1
+    #     awslogs-create-group: "true"
 
   frontend:
     build:

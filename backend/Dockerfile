@@ -1,19 +1,27 @@
-FROM node:18-alpine
-
-ARG GIT_COMMIT_HASH
-RUN if [ -z "$GIT_COMMIT_HASH" ]; then echo "ERROR: GIT_COMMIT_HASH build arg is required" && exit 1; fi
-ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY package*.json ./
+# Install system dependencies for psycopg2
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN npm install --legacy-peer-deps --prefer-offline --no-audit || npm install --legacy-peer-deps --no-audit
+# Copy requirements first for better caching
+COPY requirements.txt .
 
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
 COPY . .
 
-RUN npm run build || true
+# Make start script executable
+RUN chmod +x start.sh
 
+# Expose port
 EXPOSE 3001
 
-CMD ["npm", "run", "start"]
+# Run the application using start script
+CMD ["./start.sh"]
