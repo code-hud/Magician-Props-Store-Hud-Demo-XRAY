@@ -13,13 +13,72 @@ provider "aws" {
 }
 
 locals {
-  name = "magician-props-store-demo-stress-test"
+  name = "${var.project_name}-stress-test"
   tags = {
-    Project     = "magician-props-store-demo-stress-test"
+    Project     = "${var.project_name}-stress-test"
     Environment = "test"
     ManagedBy   = "terraform"
   }
 }
+
+# -----------------------------------------------------------------------------
+# Terraform Backend Resources (S3 + DynamoDB)
+# -----------------------------------------------------------------------------
+# Note: After applying these resources, uncomment the backend block in this file
+# and run: terraform init -migrate-state
+
+resource "aws_s3_bucket" "terraform_state" {
+  bucket = "${var.project_name}-stress-test-tfstate"
+  tags   = merge(local.tags, { Name = "Terraform State Bucket" })
+}
+
+resource "aws_s3_bucket_versioning" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "terraform_state" {
+  bucket                  = aws_s3_bucket.terraform_state.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "${var.project_name}-stress-test-tflock"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  tags = merge(local.tags, { Name = "Terraform State Lock Table" })
+}
+
+# Uncomment this block after applying the resources above:
+# terraform {
+#   backend "s3" {
+#     bucket         = "${var.project_name}-stress-test-tfstate"
+#     key            = "stress-test/terraform.tfstate"
+#     region         = "us-east-2"
+#     encrypt        = true
+#     dynamodb_table = "${var.project_name}-stress-test-tflock"
+#   }
+# }
 
 # -----------------------------------------------------------------------------
 # VPC - Minimal setup with public subnet
@@ -307,7 +366,7 @@ resource "aws_ecs_task_definition" "postgres" {
   tags = local.tags
 }
 
-# Backend WITH Hud
+# Backend WITH Hud (Python/FastAPI)
 resource "aws_ecs_task_definition" "backend_with_hud" {
   family                   = "${local.name}-backend-with-hud"
   network_mode             = "awsvpc"
@@ -328,19 +387,23 @@ resource "aws_ecs_task_definition" "backend_with_hud" {
       protocol      = "tcp"
     }]
 
-    command = ["npm", "run", "start:prod"]
+    command = ["bash", "start.sh"]
 
     environment = [
-      { name = "NODE_ENV", value = "development" },
       { name = "PORT", value = "3001" },
+      { name = "SERVICE_NAME", value = "magician-props-api-py-with-hud" },
+      { name = "LOG_LEVEL", value = "info" },
       { name = "DB_HOST", value = "postgres.stress-test.local" },
       { name = "DB_PORT", value = "5432" },
       { name = "DB_NAME", value = "magician_props_store" },
       { name = "DB_USER", value = "postgres" },
       { name = "DB_PASSWORD", value = "postgres" },
       { name = "CHECKOUT_SERVICE_URL", value = "https://red-art-630d.omer-b78.workers.dev" },
+      { name = "XRAY_DAEMON_ADDRESS", value = "localhost:2000" },
+      { name = "AWS_XRAY_DAEMON_ADDRESS", value = "localhost:2000" },
       { name = "HUD_API_KEY", value = var.hud_api_key },
-      { name = "HUD_ENABLED", value = "true" }
+      { name = "HUD_ENABLED", value = "true" },
+      { name = "GIT_COMMIT_HASH", value = var.git_commit_hash }
     ]
 
     logConfiguration = {
@@ -356,7 +419,7 @@ resource "aws_ecs_task_definition" "backend_with_hud" {
   tags = local.tags
 }
 
-# Backend WITHOUT Hud
+# Backend WITHOUT Hud (Python/FastAPI)
 resource "aws_ecs_task_definition" "backend_no_hud" {
   family                   = "${local.name}-backend-no-hud"
   network_mode             = "awsvpc"
@@ -377,18 +440,22 @@ resource "aws_ecs_task_definition" "backend_no_hud" {
       protocol      = "tcp"
     }]
 
-    command = ["node", "dist/main.js"]
+    command = ["bash", "start.sh"]
 
     environment = [
-      { name = "NODE_ENV", value = "development" },
       { name = "PORT", value = "3001" },
+      { name = "SERVICE_NAME", value = "magician-props-api-py-no-hud" },
+      { name = "LOG_LEVEL", value = "info" },
       { name = "DB_HOST", value = "postgres.stress-test.local" },
       { name = "DB_PORT", value = "5432" },
       { name = "DB_NAME", value = "magician_props_store" },
       { name = "DB_USER", value = "postgres" },
       { name = "DB_PASSWORD", value = "postgres" },
       { name = "CHECKOUT_SERVICE_URL", value = "https://red-art-630d.omer-b78.workers.dev" },
-      { name = "HUD_ENABLED", value = "false" }
+      { name = "XRAY_DAEMON_ADDRESS", value = "localhost:2000" },
+      { name = "AWS_XRAY_DAEMON_ADDRESS", value = "localhost:2000" },
+      { name = "HUD_ENABLED", value = "false" },
+      { name = "GIT_COMMIT_HASH", value = var.git_commit_hash }
     ]
 
     logConfiguration = {

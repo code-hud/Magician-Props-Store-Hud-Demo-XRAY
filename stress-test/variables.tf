@@ -1,3 +1,9 @@
+variable "project_name" {
+  description = "Unique project name prefix for all resources"
+  type        = string
+  default     = "magician-props-store-demo"
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -8,6 +14,12 @@ variable "hud_api_key" {
   description = "Hud API key for the with-hud backend"
   type        = string
   sensitive   = true
+}
+
+variable "git_commit_hash" {
+  description = "Git commit hash for tagging"
+  type        = string
+  default     = "unknown"
 }
 
 variable "backend_cpu" {
