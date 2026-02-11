@@ -1,85 +1,46 @@
-import logging
+import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from aws_xray_sdk.core import xray_recorder, patch_all
 
 from app.config import get_settings
-from app.utils.logger import logger
 from app.routers import products, cart, orders, cache
 from app.services.cache_service import CacheService
 
 settings = get_settings()
 
-# Configure X-Ray
-xray_recorder.configure(
-    service=settings.service_name,
-    daemon_address=settings.xray_daemon_address,
-    context_missing='LOG_ERROR'
-)
 
-# Patch libraries for automatic instrumentation
-patch_all()
-
-
-class XRayMiddleware(BaseHTTPMiddleware):
-    """X-Ray middleware for FastAPI."""
-
-    async def dispatch(self, request: Request, call_next):
-        """Process request with X-Ray tracing."""
-        # Start a segment for this request
-        segment = xray_recorder.begin_segment(
-            name=settings.service_name,
-            traceid=request.headers.get('X-Amzn-Trace-Id')
-        )
-
-        try:
-            # Add request metadata
-            segment.put_http_meta('request', {
-                'url': str(request.url),
-                'method': request.method,
-                'user_agent': request.headers.get('user-agent', ''),
-                'client_ip': request.client.host if request.client else None
-            })
-
-            response = await call_next(request)
-
-            # Add response metadata
-            segment.put_http_meta('response', {
-                'status': response.status_code
-            })
-
-            return response
-        except Exception as e:
-            # Record exception
-            segment.put_annotation('error', True)
-            xray_recorder.current_segment().add_exception(e)
-            raise
-        finally:
-            xray_recorder.end_segment()
+async def _init_cache_background():
+    """Initialize cache in background without blocking startup."""
+    try:
+        cache_service = CacheService()
+        await cache_service.initialize()
+    except Exception as e:
+        print(f"Cache initialization failed: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    logger.info(f"Starting {settings.service_name}...")
+    print(f"Starting {settings.service_name}...")
 
-    # Initialize image cache
-    try:
-        cache_service = CacheService()
-        await cache_service.initialize()
-    except Exception as e:
-        logger.error(f"Cache initialization failed: {e}")
-        # Don't block startup on cache failure
+    # Initialize image cache in background (don't block startup)
+    cache_task = asyncio.create_task(_init_cache_background())
 
-    logger.info(f"Server running on port {settings.port}")
+    print(f"Server running on port {settings.port}")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down...")
+    print("Shutting down...")
+    # Cancel cache task if still running
+    if not cache_task.done():
+        cache_task.cancel()
+        try:
+            await cache_task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> FastAPI:
@@ -90,9 +51,6 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan
     )
-
-    # X-Ray middleware (must be first)
-    app.add_middleware(XRayMiddleware)
 
     # CORS middleware
     app.add_middleware(

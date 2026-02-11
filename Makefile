@@ -1,4 +1,4 @@
-.PHONY: help build up down logs clean restart test
+.PHONY: help build up down logs clean restart test stress-test stress-test-quick stress-test-analyze
 
 help:
 	@echo "Magician Props Store - Available Commands"
@@ -13,6 +13,11 @@ help:
 	@echo "  make logs-db        - View database logs"
 	@echo "  make clean          - Remove all containers and volumes"
 	@echo "  make shell-db       - Open database shell"
+	@echo ""
+	@echo "Stress Testing:"
+	@echo "  make stress-test         - Run full Hud performance benchmark"
+	@echo "  make stress-test-quick   - Run quick 2-minute benchmark"
+	@echo "  make stress-test-analyze - Analyze latest benchmark results"
 	@echo ""
 
 build:
@@ -61,3 +66,16 @@ test-api:
 	@curl -s http://localhost:3001/products | jq '.' | head -50
 	@echo ""
 	@echo "✅ API is responding"
+
+# Stress testing
+stress-test:
+	@echo "Running full Hud performance benchmark..."
+	@cd stress-test && ./run-benchmark.sh
+
+stress-test-quick:
+	@echo "Running quick benchmark (2 minutes per scenario)..."
+	@cd stress-test && ./quick-test.sh
+
+stress-test-analyze:
+	@echo "Analyzing latest benchmark results..."
+	@cd stress-test && node analyze-results.js results/

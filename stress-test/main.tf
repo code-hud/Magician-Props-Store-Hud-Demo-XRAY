@@ -69,16 +69,34 @@ resource "aws_dynamodb_table" "terraform_locks" {
   tags = merge(local.tags, { Name = "Terraform State Lock Table" })
 }
 
-# Uncomment this block after applying the resources above:
-# terraform {
-#   backend "s3" {
-#     bucket         = "${var.project_name}-stress-test-tfstate"
-#     key            = "stress-test/terraform.tfstate"
-#     region         = "us-east-2"
-#     encrypt        = true
-#     dynamodb_table = "${var.project_name}-stress-test-tflock"
-#   }
-# }
+# -----------------------------------------------------------------------------
+# S3 Backend Configuration
+# -----------------------------------------------------------------------------
+# This backend stores state in S3 with DynamoDB locking.
+#
+# Two environments share the same bucket with different keys:
+#
+#   Environment: magician-props-store-demo
+#   Key:         magician-props-store-demo/terraform.tfstate
+#   Usage:       terraform init -backend-config="key=magician-props-store-demo/terraform.tfstate"
+#
+#   Environment: magician-props-py
+#   Key:         magician-props-py/terraform.tfstate
+#   Usage:       terraform init -backend-config="key=magician-props-py/terraform.tfstate"
+#
+# To switch environments:
+#   terraform init -reconfigure -backend-config="key=<env-name>/terraform.tfstate"
+# -----------------------------------------------------------------------------
+
+terraform {
+  backend "s3" {
+    bucket         = "magician-props-py-stress-test-tfstate"
+    key            = "magician-props-store-demo/terraform.tfstate"  # Change for different env
+    region         = "us-east-2"
+    encrypt        = true
+    dynamodb_table = "magician-props-py-stress-test-tflock"
+  }
+}
 
 # -----------------------------------------------------------------------------
 # VPC - Minimal setup with public subnet

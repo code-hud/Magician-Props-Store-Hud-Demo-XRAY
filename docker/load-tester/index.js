@@ -179,8 +179,8 @@ async function runCycle() {
   console.log(`[${new Date().toISOString()}] Attempting checkout with ${cart.length} items...`);
   await checkout(cart);
 
-  // Sleep for random time between 10-60 seconds
-  const sleepTime = randomInt(10000, 60000);
+  // Minimal sleep between cycles
+  const sleepTime = randomInt(100, 500);
   const sleepSeconds = (sleepTime / 1000).toFixed(1);
   console.log(
     `[${new Date().toISOString()}] ========== CYCLE END - Sleeping for ${sleepSeconds}s ==========`
